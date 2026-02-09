@@ -1,377 +1,496 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CYBERBLAST.IO - Неонова Битва</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>SHADOW.IO - Battle Arena</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --neon-cyan: #00f3ff;
-            --neon-magenta: #ff00ff;
-            --neon-yellow: #ffff00;
-            --dark-bg: #0a0a1a;
-            --grid-color: rgba(0, 243, 255, 0.1);
+            --black: #000000;
+            --white: #ffffff;
+            --gray-dark: #1a1a1a;
+            --gray-medium: #404040;
+            --gray-light: #808080;
         }
 
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
-            font-family: 'Rajdhani', sans-serif;
-            background: var(--dark-bg);
-            color: var(--neon-cyan);
+            font-family: 'IBM Plex Mono', monospace;
+            background: var(--black);
+            color: var(--white);
             overflow: hidden;
             position: relative;
+            touch-action: none;
         }
 
-        /* Animated grid background */
-        body::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image: 
-                repeating-linear-gradient(0deg, transparent, transparent 50px, var(--grid-color) 50px, var(--grid-color) 51px),
-                repeating-linear-gradient(90deg, transparent, transparent 50px, var(--grid-color) 50px, var(--grid-color) 51px);
-            animation: gridScroll 20s linear infinite;
-            pointer-events: none;
-            z-index: 0;
-        }
-
-        @keyframes gridScroll {
-            0% { transform: translate(0, 0); }
-            100% { transform: translate(50px, 50px); }
-        }
-
-        /* Scanline effect */
-        body::after {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: repeating-linear-gradient(
-                0deg,
-                rgba(0, 0, 0, 0.1),
-                rgba(0, 0, 0, 0.1) 1px,
-                transparent 1px,
-                transparent 2px
-            );
-            pointer-events: none;
-            z-index: 9999;
-            animation: scanline 8s linear infinite;
-        }
-
-        @keyframes scanline {
-            0% { transform: translateY(0); }
-            100% { transform: translateY(100%); }
-        }
-
-        #menuScreen, #gameScreen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 1;
-        }
-
+        /* Menu Screen */
         #menuScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1000;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            background: radial-gradient(ellipse at center, rgba(0, 243, 255, 0.15) 0%, var(--dark-bg) 70%);
+            background: var(--black);
         }
 
         #gameScreen {
             display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .menu-header {
+            padding: 2rem;
+            border-bottom: 2px solid var(--white);
         }
 
         .logo {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 6rem;
-            font-weight: 900;
+            font-family: 'Space Mono', monospace;
+            font-size: clamp(2rem, 8vw, 4rem);
+            font-weight: 700;
+            letter-spacing: 0.2em;
+            margin-bottom: 0.5rem;
+        }
+
+        .tagline {
+            font-size: clamp(0.8rem, 2.5vw, 1rem);
+            letter-spacing: 0.3em;
+            color: var(--gray-light);
             text-transform: uppercase;
-            letter-spacing: 0.3rem;
-            margin-bottom: 2rem;
-            text-shadow: 
-                0 0 10px var(--neon-cyan),
-                0 0 20px var(--neon-cyan),
-                0 0 40px var(--neon-cyan),
-                0 0 80px var(--neon-cyan);
-            animation: pulseLogo 2s ease-in-out infinite;
-            background: linear-gradient(45deg, var(--neon-cyan), var(--neon-magenta), var(--neon-yellow));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
         }
 
-        @keyframes pulseLogo {
-            0%, 100% { transform: scale(1); filter: brightness(1); }
-            50% { transform: scale(1.05); filter: brightness(1.3); }
+        .menu-tabs {
+            display: flex;
+            border-bottom: 2px solid var(--white);
         }
 
-        .subtitle {
-            font-size: 1.5rem;
-            font-weight: 300;
-            letter-spacing: 0.5rem;
-            margin-bottom: 4rem;
-            color: var(--neon-magenta);
-            text-shadow: 0 0 10px var(--neon-magenta);
+        .tab {
+            flex: 1;
+            padding: 1rem;
+            background: var(--black);
+            border: none;
+            border-right: 2px solid var(--white);
+            color: var(--gray-light);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: clamp(0.8rem, 2vw, 1rem);
+            font-weight: 600;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s;
         }
 
-        .menu-container {
-            background: rgba(10, 10, 26, 0.8);
-            border: 2px solid var(--neon-cyan);
-            border-radius: 0;
-            padding: 3rem 4rem;
-            box-shadow: 
-                0 0 20px rgba(0, 243, 255, 0.3),
-                inset 0 0 20px rgba(0, 243, 255, 0.1);
-            clip-path: polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%);
-            position: relative;
+        .tab:last-child {
+            border-right: none;
         }
 
-        .menu-container::before {
-            content: '';
-            position: absolute;
-            top: -2px;
-            left: -2px;
-            right: -2px;
-            bottom: -2px;
-            background: linear-gradient(45deg, var(--neon-cyan), var(--neon-magenta), var(--neon-yellow), var(--neon-cyan));
-            border-radius: 0;
-            z-index: -1;
-            opacity: 0;
-            animation: borderGlow 3s linear infinite;
+        .tab.active {
+            background: var(--white);
+            color: var(--black);
         }
 
-        @keyframes borderGlow {
-            0%, 100% { opacity: 0.3; }
-            50% { opacity: 0.8; }
+        .menu-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 2rem;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .input-label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
         }
 
         input[type="text"] {
             width: 100%;
-            padding: 1rem 1.5rem;
-            font-family: 'Rajdhani', sans-serif;
-            font-size: 1.2rem;
-            font-weight: 600;
-            background: rgba(0, 0, 0, 0.5);
-            border: 2px solid var(--neon-cyan);
-            color: var(--neon-cyan);
+            padding: 1rem;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 1rem;
+            background: var(--gray-dark);
+            border: 2px solid var(--white);
+            color: var(--white);
             outline: none;
-            margin-bottom: 2rem;
-            text-transform: uppercase;
-            letter-spacing: 0.2rem;
-            transition: all 0.3s ease;
-            clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
+            transition: all 0.2s;
         }
 
         input[type="text"]:focus {
-            box-shadow: 
-                0 0 20px rgba(0, 243, 255, 0.6),
-                inset 0 0 20px rgba(0, 243, 255, 0.2);
-            border-color: var(--neon-yellow);
-        }
-
-        input[type="text"]::placeholder {
-            color: rgba(0, 243, 255, 0.5);
+            background: var(--white);
+            color: var(--black);
         }
 
         .play-button {
             width: 100%;
-            padding: 1.2rem 2rem;
-            font-family: 'Orbitron', sans-serif;
-            font-size: 1.5rem;
+            padding: 1.5rem;
+            font-family: 'Space Mono', monospace;
+            font-size: 1.2rem;
             font-weight: 700;
-            background: linear-gradient(135deg, var(--neon-cyan), var(--neon-magenta));
-            border: none;
-            color: var(--dark-bg);
+            background: var(--white);
+            border: 2px solid var(--white);
+            color: var(--black);
             text-transform: uppercase;
-            letter-spacing: 0.3rem;
+            letter-spacing: 0.2em;
             cursor: pointer;
-            position: relative;
-            overflow: hidden;
-            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
-            transition: all 0.3s ease;
-        }
-
-        .play-button::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-            transition: left 0.5s ease;
-        }
-
-        .play-button:hover::before {
-            left: 100%;
-        }
-
-        .play-button:hover {
-            transform: scale(1.05);
-            box-shadow: 
-                0 0 30px rgba(0, 243, 255, 0.8),
-                0 0 50px rgba(255, 0, 255, 0.6);
+            transition: all 0.2s;
+            margin-top: 2rem;
         }
 
         .play-button:active {
-            transform: scale(0.98);
+            background: var(--black);
+            color: var(--white);
         }
 
+        /* Shop */
+        .shop-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+
+        .shop-item {
+            background: var(--gray-dark);
+            border: 2px solid var(--white);
+            padding: 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .shop-item:active {
+            background: var(--white);
+            color: var(--black);
+        }
+
+        .shop-item.owned {
+            background: var(--white);
+            color: var(--black);
+        }
+
+        .item-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .item-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 0.3rem;
+        }
+
+        .item-price {
+            font-size: 0.8rem;
+            color: var(--gray-light);
+        }
+
+        .shop-item.owned .item-price {
+            color: var(--gray-medium);
+        }
+
+        /* Game HUD */
         #gameCanvas {
             display: block;
-            background: var(--dark-bg);
-            cursor: crosshair;
+            background: var(--black);
         }
 
         .hud {
             position: absolute;
-            font-family: 'Orbitron', sans-serif;
-            color: var(--neon-cyan);
-            text-shadow: 0 0 10px var(--neon-cyan);
+            font-family: 'IBM Plex Mono', monospace;
+            color: var(--white);
             z-index: 10;
         }
 
         #playerStats {
-            top: 20px;
-            left: 20px;
-            background: rgba(10, 10, 26, 0.8);
-            padding: 1.5rem 2rem;
-            border: 2px solid var(--neon-cyan);
-            border-left: 5px solid var(--neon-magenta);
-            clip-path: polygon(0 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%);
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid var(--white);
+            padding: 0.8rem;
+            font-size: clamp(0.7rem, 2vw, 0.9rem);
         }
 
         #playerStats div {
-            font-size: 1.1rem;
-            margin: 0.3rem 0;
-            letter-spacing: 0.1rem;
-        }
-
-        .stat-label {
-            color: var(--neon-magenta);
-            font-weight: 700;
+            margin: 0.2rem 0;
         }
 
         #leaderboard {
-            top: 20px;
-            right: 20px;
-            background: rgba(10, 10, 26, 0.8);
-            padding: 1.5rem 2rem;
-            border: 2px solid var(--neon-cyan);
-            border-right: 5px solid var(--neon-yellow);
-            min-width: 250px;
-            clip-path: polygon(15px 0, 100% 0, 100% 100%, 0 100%, 0 15px);
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid var(--white);
+            padding: 0.8rem;
+            min-width: 150px;
+            font-size: clamp(0.7rem, 2vw, 0.9rem);
         }
 
         #leaderboard h3 {
-            font-size: 1.3rem;
-            margin-bottom: 1rem;
-            color: var(--neon-yellow);
-            text-shadow: 0 0 10px var(--neon-yellow);
-            letter-spacing: 0.2rem;
+            font-size: clamp(0.8rem, 2.5vw, 1rem);
+            margin-bottom: 0.5rem;
+            font-weight: 700;
         }
 
         .leaderboard-entry {
-            font-size: 1rem;
-            margin: 0.5rem 0;
-            padding: 0.3rem 0;
-            border-bottom: 1px solid rgba(0, 243, 255, 0.2);
+            margin: 0.3rem 0;
+            padding: 0.2rem 0;
+            border-bottom: 1px solid var(--gray-medium);
         }
 
         .healthbar-container {
             position: absolute;
-            bottom: 30px;
+            bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
-            width: 400px;
-            height: 40px;
-            background: rgba(10, 10, 26, 0.9);
-            border: 3px solid var(--neon-cyan);
-            padding: 5px;
-            clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+            width: min(90%, 400px);
+            height: 30px;
+            background: var(--black);
+            border: 2px solid var(--white);
         }
 
         #healthbar {
             width: 100%;
             height: 100%;
-            background: linear-gradient(90deg, #ff0000, #ff00ff, #00f3ff);
+            background: var(--white);
             transition: width 0.3s ease;
-            box-shadow: 0 0 20px var(--neon-cyan);
-            position: relative;
-            overflow: hidden;
         }
 
-        #healthbar::after {
-            content: '';
+        #coins {
             position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-            animation: healthGlow 2s linear infinite;
-        }
-
-        @keyframes healthGlow {
-            0% { left: -100%; }
-            100% { left: 100%; }
-        }
-
-        .controls-hint {
-            position: absolute;
-            bottom: 90px;
+            top: 10px;
             left: 50%;
             transform: translateX(-50%);
-            font-family: 'Rajdhani', sans-serif;
-            font-size: 0.9rem;
-            color: rgba(0, 243, 255, 0.7);
-            text-align: center;
-            letter-spacing: 0.1rem;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid var(--white);
+            padding: 0.8rem 1.5rem;
+            font-size: clamp(0.9rem, 2.5vw, 1.1rem);
+            font-weight: 700;
+        }
+
+        /* Mobile Controls */
+        #mobileControls {
+            display: none;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 200px;
+            z-index: 20;
+            pointer-events: none;
+        }
+
+        .joystick-container {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 120px;
+            height: 120px;
+            pointer-events: all;
+        }
+
+        .joystick-base {
+            width: 100%;
+            height: 100%;
+            border: 3px solid var(--white);
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+
+        .joystick-stick {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 50px;
+            height: 50px;
+            background: var(--white);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: all 0.1s;
+        }
+
+        .shoot-button {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 3px solid var(--white);
+            border-radius: 50%;
+            font-family: 'Space Mono', monospace;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--black);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: all;
+            user-select: none;
+        }
+
+        .shoot-button:active {
+            background: var(--white);
+            transform: scale(0.95);
+        }
+
+        /* Chat */
+        #chatContainer {
+            position: absolute;
+            bottom: 70px;
+            left: 10px;
+            width: min(90%, 300px);
+            max-height: 200px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid var(--white);
+            display: flex;
+            flex-direction: column;
+            z-index: 15;
+        }
+
+        #chatMessages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem;
+            font-size: clamp(0.7rem, 2vw, 0.85rem);
+        }
+
+        .chat-message {
+            margin: 0.3rem 0;
+            word-wrap: break-word;
+        }
+
+        .chat-player {
+            font-weight: 700;
+        }
+
+        #chatInputContainer {
+            border-top: 2px solid var(--white);
+            display: flex;
+        }
+
+        #chatInput {
+            flex: 1;
+            padding: 0.5rem;
+            background: var(--black);
+            border: none;
+            color: var(--white);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.85rem;
+            outline: none;
+        }
+
+        #chatSend {
+            padding: 0.5rem 1rem;
+            background: var(--white);
+            border: none;
+            color: var(--black);
+            font-family: 'IBM Plex Mono', monospace;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        #chatSend:active {
+            background: var(--gray-light);
         }
 
         @media (max-width: 768px) {
-            .logo {
-                font-size: 3rem;
+            #mobileControls {
+                display: block;
             }
-            
-            .subtitle {
-                font-size: 1rem;
-            }
-            
-            .menu-container {
-                padding: 2rem;
-            }
-            
+
             #playerStats, #leaderboard {
-                font-size: 0.8rem;
-                padding: 1rem;
+                font-size: 0.7rem;
+                padding: 0.5rem;
+            }
+
+            #chatContainer {
+                width: calc(100% - 20px);
+                max-height: 150px;
+            }
+
+            .healthbar-container {
+                bottom: 160px;
             }
         }
     </style>
 </head>
 <body>
     <div id="menuScreen">
-        <h1 class="logo">CYBERBLAST.IO</h1>
-        <div class="subtitle">НЕОНОВА БИТВА</div>
-        <div class="menu-container">
-            <input type="text" id="nameInput" placeholder="ВВЕДІТЬ ІМ'Я" maxlength="15" autocomplete="off">
-            <button class="play-button" onclick="startGame()">▶ ГРАТИ</button>
+        <div class="menu-header">
+            <div class="logo">SHADOW.IO</div>
+            <div class="tagline">Battle Arena</div>
+        </div>
+
+        <div class="menu-tabs">
+            <button class="tab active" onclick="switchTab(0)">PLAY</button>
+            <button class="tab" onclick="switchTab(1)">SHOP</button>
+            <button class="tab" onclick="switchTab(2)">STATS</button>
+        </div>
+
+        <div class="menu-content">
+            <div class="tab-panel active" id="playPanel">
+                <div class="input-group">
+                    <label class="input-label">Player Name</label>
+                    <input type="text" id="nameInput" placeholder="Enter your name" maxlength="15" autocomplete="off">
+                </div>
+                <button class="play-button" onclick="startGame()">▶ START GAME</button>
+            </div>
+
+            <div class="tab-panel" id="shopPanel">
+                <div class="input-group">
+                    <label class="input-label">Your Coins: <span id="shopCoins">0</span></label>
+                </div>
+                <div class="shop-grid" id="shopGrid">
+                    <!-- Shop items will be generated here -->
+                </div>
+            </div>
+
+            <div class="tab-panel" id="statsPanel">
+                <div class="input-group">
+                    <label class="input-label">Total Kills</label>
+                    <div style="font-size: 2rem; font-weight: 700;" id="totalKills">0</div>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Total Deaths</label>
+                    <div style="font-size: 2rem; font-weight: 700;" id="totalDeaths">0</div>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Best Score</label>
+                    <div style="font-size: 2rem; font-weight: 700;" id="bestScore">0</div>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Games Played</label>
+                    <div style="font-size: 2rem; font-weight: 700;" id="gamesPlayed">0</div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -379,13 +498,17 @@
         <canvas id="gameCanvas"></canvas>
         
         <div id="playerStats" class="hud">
-            <div><span class="stat-label">ІМ'Я:</span> <span id="playerName">-</span></div>
-            <div><span class="stat-label">ОЧКИ:</span> <span id="playerScore">0</span></div>
-            <div><span class="stat-label">ВБИВСТВА:</span> <span id="playerKills">0</span></div>
+            <div><strong>NAME:</strong> <span id="playerName">-</span></div>
+            <div><strong>SCORE:</strong> <span id="playerScore">0</span></div>
+            <div><strong>KILLS:</strong> <span id="playerKills">0</span></div>
+        </div>
+
+        <div id="coins" class="hud">
+            <span>💰</span> <span id="coinCount">0</span>
         </div>
 
         <div id="leaderboard" class="hud">
-            <h3>⚡ ТОП ГРАВЦІ</h3>
+            <h3>TOP PLAYERS</h3>
             <div id="leaderboardList"></div>
         </div>
 
@@ -393,8 +516,21 @@
             <div id="healthbar"></div>
         </div>
 
-        <div class="controls-hint">
-            WASD - РУХ | МИША - ЦІЛЬ | ЛКМ - СТРІЛЯТИ
+        <div id="chatContainer">
+            <div id="chatMessages"></div>
+            <div id="chatInputContainer">
+                <input type="text" id="chatInput" placeholder="Type message..." maxlength="100">
+                <button id="chatSend">SEND</button>
+            </div>
+        </div>
+
+        <div id="mobileControls">
+            <div class="joystick-container">
+                <div class="joystick-base">
+                    <div class="joystick-stick" id="joystickStick"></div>
+                </div>
+            </div>
+            <div class="shoot-button" id="shootButton">FIRE</div>
         </div>
     </div>
 
