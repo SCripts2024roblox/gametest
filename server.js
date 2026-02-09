@@ -21,9 +21,10 @@ let bulletIdCounter = 0;
 
 // Player class
 class Player {
-  constructor(id, name) {
+  constructor(id, name, skin = 'default') {
     this.id = id;
     this.name = name;
+    this.skin = skin;
     this.x = Math.random() * WORLD_SIZE;
     this.y = Math.random() * WORLD_SIZE;
     this.angle = 0;
@@ -32,7 +33,6 @@ class Player {
     this.health = 100;
     this.maxHealth = 100;
     this.score = 0;
-    this.color = `hsl(${Math.random() * 360}, 70%, 60%)`;
     this.keys = { w: false, a: false, s: false, d: false };
     this.lastShot = Date.now();
   }
@@ -69,7 +69,7 @@ class Player {
     const angle = Math.atan2(mouseY - this.y, mouseX - this.x);
     const bulletId = `bullet_${bulletIdCounter++}`;
     
-    return new Bullet(bulletId, this.id, this.x, this.y, angle, this.color);
+    return new Bullet(bulletId, this.id, this.x, this.y, angle);
   }
 
   takeDamage(damage) {
@@ -80,7 +80,7 @@ class Player {
 
 // Bullet class
 class Bullet {
-  constructor(id, playerId, x, y, angle, color) {
+  constructor(id, playerId, x, y, angle) {
     this.id = id;
     this.playerId = playerId;
     this.x = x;
@@ -89,7 +89,6 @@ class Bullet {
     this.speed = 8;
     this.radius = 5;
     this.damage = 15;
-    this.color = color;
     this.distance = 0;
     this.maxDistance = 600;
   }
@@ -116,7 +115,7 @@ wss.on('connection', (ws) => {
       switch (data.type) {
         case 'join':
           playerId = data.id;
-          const player = new Player(playerId, data.name || 'Player');
+          const player = new Player(playerId, data.name || 'Player', data.skin || 'default');
           players.set(playerId, player);
           
           ws.send(JSON.stringify({
@@ -150,6 +149,30 @@ wss.on('connection', (ws) => {
             if (bullet) {
               bullets.set(bullet.id, bullet);
             }
+          }
+          break;
+
+        case 'chat':
+          if (players.has(playerId)) {
+            const player = players.get(playerId);
+            broadcast({
+              type: 'chat',
+              playerId: playerId,
+              playerName: player.name,
+              message: data.message
+            });
+          }
+          break;
+
+        case 'chat':
+          if (players.has(playerId)) {
+            const player = players.get(playerId);
+            broadcast({
+              type: 'chat',
+              playerId: playerId,
+              playerName: player.name,
+              message: data.message
+            });
           }
           break;
       }
@@ -231,8 +254,7 @@ setInterval(() => {
       id: b.id,
       x: b.x,
       y: b.y,
-      radius: b.radius,
-      color: b.color
+      radius: b.radius
     }))
   });
 }, 1000 / TICK_RATE);
@@ -241,14 +263,14 @@ function getPlayerData(player) {
   return {
     id: player.id,
     name: player.name,
+    skin: player.skin,
     x: player.x,
     y: player.y,
     angle: player.angle,
     radius: player.radius,
     health: player.health,
     maxHealth: player.maxHealth,
-    score: player.score,
-    color: player.color
+    score: player.score
   };
 }
 
