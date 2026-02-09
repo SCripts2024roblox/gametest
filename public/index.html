@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2D PVP .IO Игра</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="game-header">
+            <h1><i class="fas fa-gamepad"></i> Battle.io</h1>
+            <div class="stats">
+                <span id="onlineCount">0</span> игроков онлайн
+            </div>
+        </div>
+        
+        <div class="game-wrapper">
+            <div class="sidebar">
+                <div class="login-panel" id="loginPanel">
+                    <h3>Вход в игру</h3>
+                    <input type="text" id="usernameInput" placeholder="Введите имя" maxlength="15" value="Игрок">
+                    <button id="joinButton">Присоединиться</button>
+                    <div class="controls-info">
+                        <h4>Управление:</h4>
+                        <p><i class="fas fa-mouse-pointer"></i> Мышь - направление</p>
+                        <p><i class="fas fa-running"></i> WASD - движение</p>
+                        <p><i class="fas fa-bullseye"></i> ЛКМ / Пробел - выстрел</p>
+                    </div>
+                </div>
+                
+                <div class="game-info" id="gameInfo" style="display: none;">
+                    <h3>Статистика</h3>
+                    <div class="player-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">Имя:</span>
+                            <span id="playerName" class="stat-value">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Здоровье:</span>
+                            <span id="playerHealth" class="stat-value health">100</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Счет:</span>
+                            <span id="playerScore" class="stat-value">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Убийств:</span>
+                            <span id="playerKills" class="stat-value">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Смертей:</span>
+                            <span id="playerDeaths" class="stat-value">0</span>
+                        </div>
+                    </div>
+                    
+                    <h4>Игроки онлайн:</h4>
+                    <div id="playersList" class="players-list">
+                        <!-- Список игроков -->
+                    </div>
+                </div>
+                
+                <div class="chat-container">
+                    <h4>Чат</h4>
+                    <div id="chatMessages" class="chat-messages"></div>
+                    <div class="chat-input">
+                        <input type="text" id="chatInput" placeholder="Сообщение...">
+                        <button id="sendButton"><i class="fas fa-paper-plane"></i></button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="game-area">
+                <canvas id="gameCanvas"></canvas>
+                <div class="minimap-container">
+                    <canvas id="minimap"></canvas>
+                </div>
+                <div id="deathScreen" class="death-screen" style="display: none;">
+                    <h2>ВЫ УМЕРЛИ</h2>
+                    <p>Респавн через <span id="respawnTimer">3</span> сек.</p>
+                    <div class="kill-info">
+                        <p>Вас убил: <span id="killerName">Unknown</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>2D PVP .IO Игра | Управление: WASD + Мышь | Создано для Render</p>
+        </div>
+    </div>
+    
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="client.js"></script>
+</body>
+</html>
