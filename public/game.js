@@ -11,6 +11,37 @@ let mouseY = 0;
 let mouseWorldX = 0;
 let mouseWorldY = 0;
 let kills = 0;
+let coins = 0;
+let isMobile = false;
+let joystickActive = false;
+let joystickData = { x: 0, y: 0 };
+
+// Stats
+let stats = {
+    totalKills: parseInt(localStorage.getItem('totalKills') || '0'),
+    totalDeaths: parseInt(localStorage.getItem('totalDeaths') || '0'),
+    bestScore: parseInt(localStorage.getItem('bestScore') || '0'),
+    gamesPlayed: parseInt(localStorage.getItem('gamesPlayed') || '0'),
+    coins: parseInt(localStorage.getItem('coins') || '0')
+};
+
+// Shop items
+const shopItems = [
+    { id: 'speed1', name: 'Speed Boost', price: 100, icon: '⚡', owned: false },
+    { id: 'health1', name: 'Max Health', price: 150, icon: '❤️', owned: false },
+    { id: 'damage1', name: 'Damage Up', price: 200, icon: '💥', owned: false },
+    { id: 'skin1', name: 'Shadow Skin', price: 50, icon: '👤', owned: false },
+    { id: 'skin2', name: 'Ghost Skin', price: 75, icon: '👻', owned: false },
+    { id: 'skin3', name: 'Skull Skin', price: 100, icon: '💀', owned: false }
+];
+
+// Load owned items
+let ownedItems = JSON.parse(localStorage.getItem('ownedItems') || '[]');
+shopItems.forEach(item => {
+    if (ownedItems.includes(item.id)) {
+        item.owned = true;
+    }
+});
 
 const keys = {
     w: false,
@@ -18,6 +49,80 @@ const keys = {
     s: false,
     d: false
 };
+
+// Detect mobile
+function detectMobile() {
+    isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
+        || window.innerWidth < 768;
+    return isMobile;
+}
+
+// Tab switching
+function switchTab(index) {
+    const tabs = document.querySelectorAll('.tab');
+    const panels = document.querySelectorAll('.tab-panel');
+    
+    tabs.forEach((tab, i) => {
+        if (i === index) {
+            tab.classList.add('active');
+        } else {
+            tab.classList.remove('active');
+        }
+    });
+    
+    panels.forEach((panel, i) => {
+        if (i === index) {
+            panel.classList.add('active');
+        } else {
+            panel.classList.remove('active');
+        }
+    });
+    
+    if (index === 1) {
+        updateShop();
+    } else if (index === 2) {
+        updateStats();
+    }
+}
+
+// Update shop
+function updateShop() {
+    document.getElementById('shopCoins').textContent = stats.coins;
+    const shopGrid = document.getElementById('shopGrid');
+    
+    shopGrid.innerHTML = shopItems.map(item => `
+        <div class="shop-item ${item.owned ? 'owned' : ''}" onclick="buyItem('${item.id}')">
+            <div class="item-icon">${item.icon}</div>
+            <div class="item-name">${item.name}</div>
+            <div class="item-price">${item.owned ? 'OWNED' : item.price + ' coins'}</div>
+        </div>
+    `).join('');
+}
+
+// Buy item
+function buyItem(itemId) {
+    const item = shopItems.find(i => i.id === itemId);
+    if (!item || item.owned) return;
+    
+    if (stats.coins >= item.price) {
+        stats.coins -= item.price;
+        item.owned = true;
+        ownedItems.push(itemId);
+        
+        localStorage.setItem('coins', stats.coins.toString());
+        localStorage.setItem('ownedItems', JSON.stringify(ownedItems));
+        
+        updateShop();
+    }
+}
+
+// Update stats display
+function updateStats() {
+    document.getElementById('totalKills').textContent = stats.totalKills;
+    document.getElementById('totalDeaths').textContent = stats.totalDeaths;
+    document.getElementById('bestScore').textContent = stats.bestScore;
+    document.getElementById('gamesPlayed').textContent = stats.gamesPlayed;
+}
 
 function startGame() {
     const nameInput = document.getElementById('nameInput');
@@ -29,11 +134,19 @@ function startGame() {
     canvas = document.getElementById('gameCanvas');
     ctx = canvas.getContext('2d');
     
+    detectMobile();
     resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
+    window.addEventListener('resize', () => {
+        detectMobile();
+        resizeCanvas();
+    });
     
     connectWebSocket(playerName);
     setupControls();
+    setupChat();
+    
+    stats.gamesPlayed++;
+    localStorage.setItem('gamesPlayed', stats.gamesPlayed.toString());
     
     requestAnimationFrame(gameLoop);
 }
@@ -84,27 +197,48 @@ function handleServerMessage(data) {
             break;
             
         case 'gameState':
-            // Update players
             const newPlayers = new Map();
             data.players.forEach(p => {
                 newPlayers.set(p.id, p);
             });
             players = newPlayers;
-            
-            // Update bullets
             bullets = data.bullets;
             break;
             
         case 'playerDied':
             if (data.killerId === playerId) {
                 kills++;
+                coins += 10;
+                stats.totalKills++;
+                stats.coins += 10;
+                
                 document.getElementById('playerKills').textContent = kills;
+                document.getElementById('coinCount').textContent = coins;
+                
+                localStorage.setItem('totalKills', stats.totalKills.toString());
+                localStorage.setItem('coins', stats.coins.toString());
             }
+            if (data.playerId === playerId) {
+                stats.totalDeaths++;
+                localStorage.setItem('totalDeaths', stats.totalDeaths.toString());
+            }
+            break;
+            
+        case 'chat':
+            addChatMessage(data.playerName, data.message);
             break;
     }
 }
 
 function setupControls() {
+    if (isMobile) {
+        setupMobileControls();
+    } else {
+        setupDesktopControls();
+    }
+}
+
+function setupDesktopControls() {
     document.addEventListener('keydown', (e) => {
         const key = e.key.toLowerCase();
         if (key in keys) {
@@ -124,26 +258,117 @@ function setupControls() {
     canvas.addEventListener('mousemove', (e) => {
         mouseX = e.clientX;
         mouseY = e.clientY;
-        
-        const player = players.get(playerId);
-        if (player) {
-            mouseWorldX = mouseX - canvas.width / 2 + player.x;
-            mouseWorldY = mouseY - canvas.height / 2 + player.y;
-            
-            const angle = Math.atan2(mouseWorldY - player.y, mouseWorldX - player.x);
-            sendInput(angle);
-        }
+        updateMouseWorld();
     });
     
     canvas.addEventListener('click', () => {
-        if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({
-                type: 'shoot',
-                mouseX: mouseWorldX,
-                mouseY: mouseWorldY
-            }));
-        }
+        shoot();
     });
+}
+
+function setupMobileControls() {
+    // Joystick
+    const joystickBase = document.querySelector('.joystick-container');
+    const joystickStick = document.getElementById('joystickStick');
+    
+    joystickBase.addEventListener('touchstart', handleJoystickStart);
+    joystickBase.addEventListener('touchmove', handleJoystickMove);
+    joystickBase.addEventListener('touchend', handleJoystickEnd);
+    
+    // Shoot button
+    const shootButton = document.getElementById('shootButton');
+    shootButton.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        shoot();
+    });
+    
+    // Auto-aim to center
+    setInterval(() => {
+        if (isMobile) {
+            const player = players.get(playerId);
+            if (player) {
+                mouseWorldX = player.x + Math.cos(player.angle) * 200;
+                mouseWorldY = player.y + Math.sin(player.angle) * 200;
+            }
+        }
+    }, 100);
+}
+
+function handleJoystickStart(e) {
+    e.preventDefault();
+    joystickActive = true;
+}
+
+function handleJoystickMove(e) {
+    e.preventDefault();
+    if (!joystickActive) return;
+    
+    const touch = e.touches[0];
+    const rect = e.target.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    
+    let dx = touch.clientX - centerX;
+    let dy = touch.clientY - centerY;
+    
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    const maxDistance = rect.width / 2 - 25;
+    
+    if (distance > maxDistance) {
+        dx = (dx / distance) * maxDistance;
+        dy = (dy / distance) * maxDistance;
+    }
+    
+    joystickData.x = dx / maxDistance;
+    joystickData.y = dy / maxDistance;
+    
+    const stick = document.getElementById('joystickStick');
+    stick.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+    
+    // Update keys based on joystick
+    keys.w = joystickData.y < -0.3;
+    keys.s = joystickData.y > 0.3;
+    keys.a = joystickData.x < -0.3;
+    keys.d = joystickData.x > 0.3;
+    
+    sendInput();
+}
+
+function handleJoystickEnd(e) {
+    e.preventDefault();
+    joystickActive = false;
+    joystickData = { x: 0, y: 0 };
+    
+    const stick = document.getElementById('joystickStick');
+    stick.style.transform = 'translate(-50%, -50%)';
+    
+    keys.w = false;
+    keys.s = false;
+    keys.a = false;
+    keys.d = false;
+    
+    sendInput();
+}
+
+function updateMouseWorld() {
+    const player = players.get(playerId);
+    if (player) {
+        mouseWorldX = mouseX - canvas.width / 2 + player.x;
+        mouseWorldY = mouseY - canvas.height / 2 + player.y;
+        
+        const angle = Math.atan2(mouseWorldY - player.y, mouseWorldX - player.x);
+        sendInput(angle);
+    }
+}
+
+function shoot() {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+            type: 'shoot',
+            mouseX: mouseWorldX,
+            mouseY: mouseWorldY
+        }));
+    }
 }
 
 function sendInput(angle) {
@@ -161,6 +386,47 @@ function sendInput(angle) {
     }
 }
 
+// Chat
+function setupChat() {
+    const chatSend = document.getElementById('chatSend');
+    const chatInput = document.getElementById('chatInput');
+    
+    chatSend.addEventListener('click', sendChatMessage);
+    chatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            sendChatMessage();
+        }
+    });
+}
+
+function sendChatMessage() {
+    const chatInput = document.getElementById('chatInput');
+    const message = chatInput.value.trim();
+    
+    if (message && ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+            type: 'chat',
+            message: message
+        }));
+        chatInput.value = '';
+    }
+}
+
+function addChatMessage(playerName, message) {
+    const chatMessages = document.getElementById('chatMessages');
+    const messageEl = document.createElement('div');
+    messageEl.className = 'chat-message';
+    messageEl.innerHTML = `<span class="chat-player">${playerName}:</span> ${message}`;
+    
+    chatMessages.appendChild(messageEl);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    
+    // Remove old messages
+    while (chatMessages.children.length > 20) {
+        chatMessages.removeChild(chatMessages.firstChild);
+    }
+}
+
 function gameLoop() {
     update();
     render();
@@ -173,13 +439,18 @@ function update() {
         camera.x = player.x - canvas.width / 2;
         camera.y = player.y - canvas.height / 2;
         
-        // Update HUD
         document.getElementById('playerScore').textContent = player.score;
+        document.getElementById('coinCount').textContent = coins;
         
         const healthPercent = (player.health / player.maxHealth) * 100;
         document.getElementById('healthbar').style.width = healthPercent + '%';
         
-        // Update leaderboard
+        // Update best score
+        if (player.score > stats.bestScore) {
+            stats.bestScore = player.score;
+            localStorage.setItem('bestScore', stats.bestScore.toString());
+        }
+        
         updateLeaderboard();
     }
 }
@@ -190,33 +461,29 @@ function updateLeaderboard() {
         .slice(0, 5);
     
     const leaderboardHtml = sortedPlayers.map((p, index) => {
-        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '•';
-        const highlight = p.id === playerId ? 'style="color: #ffff00;"' : '';
-        return `<div class="leaderboard-entry" ${highlight}>${medal} ${p.name}: ${p.score}</div>`;
+        const rank = index + 1;
+        const highlight = p.id === playerId ? 'style="font-weight: 700;"' : '';
+        return `<div class="leaderboard-entry" ${highlight}>${rank}. ${p.name}: ${p.score}</div>`;
     }).join('');
     
     document.getElementById('leaderboardList').innerHTML = leaderboardHtml;
 }
 
 function render() {
-    // Clear canvas
-    ctx.fillStyle = '#0a0a1a';
+    ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     // Draw grid
     drawGrid();
     
     // Draw world boundary
-    ctx.strokeStyle = 'rgba(0, 243, 255, 0.3)';
-    ctx.lineWidth = 5;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 3;
     ctx.strokeRect(-camera.x, -camera.y, worldSize, worldSize);
     
     // Draw bullets
     bullets.forEach(bullet => {
-        ctx.save();
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = bullet.color;
-        ctx.fillStyle = bullet.color;
+        ctx.fillStyle = '#ffffff';
         ctx.beginPath();
         ctx.arc(
             bullet.x - camera.x,
@@ -226,7 +493,6 @@ function render() {
             Math.PI * 2
         );
         ctx.fill();
-        ctx.restore();
     });
     
     // Draw players
@@ -234,29 +500,14 @@ function render() {
         const screenX = player.x - camera.x;
         const screenY = player.y - camera.y;
         
-        // Player body with glow
-        ctx.save();
-        ctx.shadowBlur = 30;
-        ctx.shadowColor = player.color;
-        
-        // Main circle
-        ctx.fillStyle = player.color;
-        ctx.beginPath();
-        ctx.arc(screenX, screenY, player.radius, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Inner glow
-        const gradient = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, player.radius);
-        gradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
-        gradient.addColorStop(0.5, player.color);
-        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        ctx.fillStyle = gradient;
+        // Player body
+        ctx.fillStyle = '#ffffff';
         ctx.beginPath();
         ctx.arc(screenX, screenY, player.radius, 0, Math.PI * 2);
         ctx.fill();
         
         // Direction indicator
-        ctx.strokeStyle = '#ffffff';
+        ctx.strokeStyle = '#000000';
         ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.moveTo(screenX, screenY);
@@ -266,97 +517,39 @@ function render() {
         );
         ctx.stroke();
         
-        ctx.restore();
-        
         // Player name
-        ctx.fillStyle = '#00f3ff';
-        ctx.font = 'bold 14px Rajdhani';
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 12px "IBM Plex Mono"';
         ctx.textAlign = 'center';
-        ctx.shadowBlur = 5;
-        ctx.shadowColor = '#00f3ff';
         ctx.fillText(player.name, screenX, screenY - player.radius - 10);
         
         // Health bar
         const barWidth = player.radius * 2;
-        const barHeight = 6;
+        const barHeight = 4;
         const barX = screenX - player.radius;
-        const barY = screenY + player.radius + 8;
+        const barY = screenY + player.radius + 6;
         
-        // Background
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.fillStyle = '#000000';
         ctx.fillRect(barX, barY, barWidth, barHeight);
         
-        // Health
         const healthWidth = (player.health / player.maxHealth) * barWidth;
-        const healthGradient = ctx.createLinearGradient(barX, 0, barX + barWidth, 0);
-        healthGradient.addColorStop(0, '#ff0000');
-        healthGradient.addColorStop(0.5, '#ff00ff');
-        healthGradient.addColorStop(1, '#00f3ff');
-        ctx.fillStyle = healthGradient;
+        ctx.fillStyle = '#ffffff';
         ctx.fillRect(barX, barY, healthWidth, barHeight);
         
-        // Border
-        ctx.strokeStyle = '#00f3ff';
+        ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 1;
         ctx.strokeRect(barX, barY, barWidth, barHeight);
-        
-        ctx.shadowBlur = 0;
     });
-    
-    // Draw crosshair
-    const player = players.get(playerId);
-    if (player) {
-        ctx.strokeStyle = '#ffff00';
-        ctx.lineWidth = 2;
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = '#ffff00';
-        
-        const crosshairSize = 20;
-        const gap = 10;
-        
-        // Top
-        ctx.beginPath();
-        ctx.moveTo(mouseX, mouseY - gap);
-        ctx.lineTo(mouseX, mouseY - gap - crosshairSize);
-        ctx.stroke();
-        
-        // Bottom
-        ctx.beginPath();
-        ctx.moveTo(mouseX, mouseY + gap);
-        ctx.lineTo(mouseX, mouseY + gap + crosshairSize);
-        ctx.stroke();
-        
-        // Left
-        ctx.beginPath();
-        ctx.moveTo(mouseX - gap, mouseY);
-        ctx.lineTo(mouseX - gap - crosshairSize, mouseY);
-        ctx.stroke();
-        
-        // Right
-        ctx.beginPath();
-        ctx.moveTo(mouseX + gap, mouseY);
-        ctx.lineTo(mouseX + gap + crosshairSize, mouseY);
-        ctx.stroke();
-        
-        // Center dot
-        ctx.fillStyle = '#ffff00';
-        ctx.beginPath();
-        ctx.arc(mouseX, mouseY, 2, 0, Math.PI * 2);
-        ctx.fill();
-        
-        ctx.shadowBlur = 0;
-    }
 }
 
 function drawGrid() {
-    const gridSize = 100;
+    const gridSize = 50;
     const startX = Math.floor(camera.x / gridSize) * gridSize;
     const startY = Math.floor(camera.y / gridSize) * gridSize;
     
-    ctx.strokeStyle = 'rgba(0, 243, 255, 0.05)';
+    ctx.strokeStyle = '#1a1a1a';
     ctx.lineWidth = 1;
     
-    // Vertical lines
     for (let x = startX; x < camera.x + canvas.width; x += gridSize) {
         ctx.beginPath();
         ctx.moveTo(x - camera.x, 0);
@@ -364,7 +557,6 @@ function drawGrid() {
         ctx.stroke();
     }
     
-    // Horizontal lines
     for (let y = startY; y < camera.y + canvas.height; y += gridSize) {
         ctx.beginPath();
         ctx.moveTo(0, y - camera.y);
@@ -373,8 +565,11 @@ function drawGrid() {
     }
 }
 
-// Handle enter key on name input
+// Initialize menu
 document.addEventListener('DOMContentLoaded', () => {
+    updateShop();
+    updateStats();
+    
     const nameInput = document.getElementById('nameInput');
     if (nameInput) {
         nameInput.addEventListener('keypress', (e) => {
